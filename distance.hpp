@@ -14,6 +14,8 @@
 #include <cv.h>
 #include <math.h>
 
+#define PI 3.14159265
+
 class Distance
 {
 public:
@@ -23,7 +25,8 @@ public:
 	void printOut(); // for debug use
 
 private:
-	float getDistance(Face cur, cv::Point center);
+	float getDistance(Face cur, Face proposedFocus);
+	cv::Point2D32f to2D(Face f, int frameWidth = 640);
 	/* data */
 	std::vector<Face> curFrameFaces;
 	std::vector<float> sums;
