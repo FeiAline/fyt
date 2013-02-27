@@ -434,26 +434,31 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     cout<<"collection size:"<<collection.size()<<endl;
 
     /* With the method of pure voting */
-    vector<Face> voted = d->getVotedFocus(collection, frameIndex);
+    vector<Face> voted = locator->getVotedFocus(collection, frameIndex);
     cout<<"voted size"<<voted.size()<<endl;
 
     Distance d;
     /* with the method of sum of the distance */
     vector<Face> faces = store->getFacesAtFrame(frameIndex);
-    vector<Face> minDFace = d->getVotedFocus(collection, frameIndex);
+    cout<<"vector size:"<<faces.size()<<endl;
+    if(faces.size() != 0){
+        Face minDFace = d.getFocus(faces);
+        d.printOut();
+        minDFace.print();
+    }else{
+        cout<<"distance part: no faces are given"<<endl;
+    }
 
     vector<cv::Rect> normal = locator->getNormal(store->getClustered(), frameIndex);
     vector<cv::Rect> intered = locator->getIntered(store->getClustered(), frameIndex);
     vector<float> ests_normal;
     vector<float> ests_intered;
-    cout<<"normal and intered got"<<endl;
 
     for(unsigned k = 0; k < normal.size(); k++){
         //cout<<"size:"<<normal[k]<<endl;
 		float est=my_est.get_pose(gray, normal[k]); 
 		ests_normal.push_back(est);
     }
-    cout<<"est interpolate"<<endl;
     for(unsigned k = 0; k < intered.size(); k++){
 		float est=my_est.get_pose(gray, intered[k]); 
 		ests_intered.push_back(est);
@@ -486,8 +491,6 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
         eposes.push_back(n);
     }
 
-    cout<<"interpolate done"<<endl;
-
     /* for detected faces */
     deco.createLayer(5, cvScalar(0,0,0));
     deco.setThickness(1);
@@ -506,24 +509,25 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
 
     //store->printOut();
     //cout<<"Cur FrameIndex:"<<frameIndex<<endl;
+    cv::Mat tmp(480,800,CV_8UC3);
 
     //return deco.mergeLayers();
-    cout<<"before output"<<endl;
-    cv::Mat output = deco.mergeLayers();
-
-    cout<<"output generated"<<endl;
-    cv::Mat tmp(480,800,CV_8UC3);
-    cv::Mat dst_roi = tmp(cv::Rect(0, 0, output.cols, output.rows));
-    output.copyTo(dst_roi);
     for(int i = 0; i< voted.size(); i++) {
-
         cout<<"Rect:"<<voted[i].toRect()<<endl;
-        cv::Mat face = output(voted[i].toRect());
+        cv::Mat face = img(voted[i].toRect());
+        deco.drawText("|", voted[i].center.x, voted[i].center.y - 100);
+        deco.drawText("|", voted[i].center.x, voted[i].center.y - 90);
+        deco.drawText("|", voted[i].center.x, voted[i].center.y - 80);
+        deco.drawText("\\", voted[i].center.x - 10, voted[i].center.y - 80);
+        deco.drawText("/", voted[i].center.x + 3, voted[i].center.y - 80);
         cv::Mat tmp_roi = tmp(cv::Rect(660, i*100 + 10, face.cols, face.rows));
         cout<<"cols:"<<face.cols<<"rows:"<<face.rows<<endl;
         face.copyTo(tmp_roi);
     }
-    cout<<"done once"<<endl;
+    cv::Mat output = deco.mergeLayers();
+
+    cv::Mat dst_roi = tmp(cv::Rect(0, 0, output.cols, output.rows));
+    output.copyTo(dst_roi);
 
     vector<cv::Mat> images;
     images.push_back(tmp);

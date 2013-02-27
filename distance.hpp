@@ -5,6 +5,7 @@
 #include <okapi/types/basictypes.hpp>
 #include "PhMdetector.hpp"
 #include "GRNN.hpp"
+#include "face.hpp"
 
 #include <string>
 #include <vector>
@@ -16,19 +17,25 @@
 
 #define PI 3.14159265
 
+struct Point
+{
+	float x;
+	float y;
+};
+
 class Distance
 {
 public:
-	distance();
-	~distance();
+	Distance();
+	~Distance();
 	Face getFocus(vector<Face> curFrameFaces);
 	void printOut(); // for debug use
 
 private:
 	float getDistance(Face cur, Face proposedFocus);
-	cv::Point2D32f to2D(Face f, int frameWidth = 640);
+	Point to2D(Face f, int frameWidth = 640);
 	/* data */
-	std::vector<Face> curFrameFaces;
+	std::vector<Face> curFaces;
 	std::vector<float> sums;
 };
 

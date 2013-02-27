@@ -40,6 +40,7 @@ class Face {
             else
                 return false;
         }
+        bool isDummy(){ return (width == 0)? true : false;}
         cv::Rect toRect(){
             cv::Rect curL;
             curL.x = center.x - width/2;

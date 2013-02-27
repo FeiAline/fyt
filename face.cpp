@@ -140,6 +140,7 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
         cout<<"pre frameIndex:"<<preFrameIndex<<endl;
         */
         if(preFrameIndex == frameIndex) {
+            cout<<"at fillin preIndex == frameIndex"<<endl;
             cur.print();
             input[eIndex-1].print();
         }
@@ -164,8 +165,8 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
         // begining of filling in
             Face prev = input[eIndex - 1];
             Face next = input[eIndex];
-            cout<<"pre:"<<prev.center.x<<" "<<prev.center.y<<' '<<prev.width<<' '<<prev.height<<endl;
-            cout<<diff-1<<"Diff filled"<<endl;
+            // cout<<"pre:"<<prev.center.x<<" "<<prev.center.y<<' '<<prev.width<<' '<<prev.height<<endl;
+            // cout<<diff-1<<"Diff filled"<<endl;
             for ( int index = 1; index < diff; index++) { // begin from 1, because gitting rid of front and back
                 Face filled;
                 cv::Point nextC = next.center;
@@ -175,14 +176,14 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
                 double wslop = (next.width - prev.width) / diff;
                 double hslop = (next.height - prev.height) / diff;
 
-                cout<<"slops:"<<xslop<<" "<<yslop<<' '<<wslop<<' '<<hslop<<endl;
+                // cout<<"slops:"<<xslop<<" "<<yslop<<' '<<wslop<<' '<<hslop<<endl;
                 
                 int curX = xslop * index + prevC.x;
                 int curY = yslop * index + prevC.y;
                 int curW = wslop * index + prev.width;
                 int curH = hslop * index + prev.height;
 
-                cout<<"cur:"<<curX<<" "<<curY<<' '<<curW<<' '<<curH<<endl;
+                // cout<<"cur:"<<curX<<" "<<curY<<' '<<curW<<' '<<curH<<endl;
 
                 filled.center.x = curX;
                 filled.center.y = curY;
@@ -192,7 +193,7 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
 
                 t.push_back(filled);
             }
-            cout<<"next:"<<next.center.x<<" "<<next.center.y<<' '<<next.width<<' '<<next.height<<endl;
+            // cout<<"next:"<<next.center.x<<" "<<next.center.y<<' '<<next.width<<' '<<next.height<<endl;
         }
         // always push back what we have 
         t.push_back(input[eIndex]);
@@ -214,7 +215,8 @@ void FaceStore::reduceNoise(int tolerance){
             for( int j = 1; j < clustered[i].size(); j++) {
                 Face cur = clustered[i][j];
                 int curIndex = cur.frameIndex;
-                cout<< "cur Difference:"<< curIndex-preIndex<<endl;
+                // cout<< "cur Difference:"<< curIndex-preIndex<<endl;
+                cout<<"At Reduce Noise"<<endl;
                 cur.print();
                 if (curIndex - preIndex < tolerance){
                     preIndex = curIndex;
@@ -304,7 +306,8 @@ vector<Face> FaceStore::getFacesAtFrame(int frameIndex) const {
     for (int i = 0; i < clustered.size(); ++i)
     {
         Face f = clustered[i][frameIndex];
-        v.push_back(f);
+        if(!f.isDummy())
+            v.push_back(f);
     }
     return v;
 }
