@@ -145,7 +145,7 @@ cv::Mat run_detectors(const cv::Mat& img, PhM::PhMPyramid& pyramid, PhM::pose_es
     heatGraph->saveHeat();
 
     store->printOut();
-    cout<<"Cur FrameIndex:"<<frameIndex<<endl;
+    // cout<<"Cur FrameIndex:"<<frameIndex<<endl;
 
     return deco.mergeLayers();
 }
@@ -286,7 +286,7 @@ int main(int argc, char* argv[])
 	max_width = 150;
 	PhM::PhMPyramid pyramid(cv::Size(640, 480), mcdets[0]->getSize(), scale_step, min_w, max_width);
 	int id=0;
-	printf("Pyramid initialize done\n");
+	//printf("Pyramid initialize done\n");
         //cv::Mat img = run_detectors(src->getImage().clone(), pyramid);
 	//	saveImage("/home/fjjiang/dets.bmp", img);
     //
@@ -441,10 +441,11 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     /* with the method of sum of the distance */
     vector<Face> faces = store->getFacesAtFrame(frameIndex);
     cout<<"vector size:"<<faces.size()<<endl;
+    vector<Face> minDFaces;
     if(faces.size() != 0){
-        Face minDFace = d.getFocus(faces);
+        minDFaces.push_back(d.getFocus(faces));
         d.printOut();
-        minDFace.print();
+        //minDFace.print();
     }else{
         cout<<"distance part: no faces are given"<<endl;
     }
@@ -512,18 +513,23 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     cv::Mat tmp(480,800,CV_8UC3);
 
     //return deco.mergeLayers();
+    
+    // use distance 
+    voted = minDFaces;
+
     for(int i = 0; i< voted.size(); i++) {
-        cout<<"Rect:"<<voted[i].toRect()<<endl;
+        //cout<<"Rect:"<<voted[i].toRect()<<endl;
         cv::Mat face = img(voted[i].toRect());
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 100);
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 90);
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 80);
-        deco.drawText("\\", voted[i].center.x - 10, voted[i].center.y - 80);
+        deco.drawText("\\", voted[i].center.x - 8, voted[i].center.y - 80);
         deco.drawText("/", voted[i].center.x + 3, voted[i].center.y - 80);
         cv::Mat tmp_roi = tmp(cv::Rect(660, i*100 + 10, face.cols, face.rows));
-        cout<<"cols:"<<face.cols<<"rows:"<<face.rows<<endl;
+        //cout<<"cols:"<<face.cols<<"rows:"<<face.rows<<endl;
         face.copyTo(tmp_roi);
     }
+
     cv::Mat output = deco.mergeLayers();
 
     cv::Mat dst_roi = tmp(cv::Rect(0, 0, output.cols, output.rows));

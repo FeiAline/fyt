@@ -129,9 +129,10 @@ void FaceStore::interpolate(int clusterNumber){
 vector<Face> FaceStore::fillIn(vector<Face> input){
     vector<Face> t;
     int preFrameIndex = 0;
+    int eIndex;
 
     /* method one -> using linear interpolation */
-    for(int eIndex = 0; eIndex < input.size(); eIndex ++) {
+    for(eIndex = 0; eIndex < input.size(); eIndex ++) {
         Face cur = input[eIndex];
         int frameIndex = cur.frameIndex;
         /*
@@ -199,6 +200,13 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
         t.push_back(input[eIndex]);
         preFrameIndex = frameIndex;
     }
+
+    /* check if all frames are filled in */
+    if(preFrameIndex != totalFrame) {
+        for(int i = preFrameIndex; i < totalFrame; i++)
+            t.push_back(input[--eIndex]);
+    }
+
     return t;
 }
 

@@ -10,7 +10,7 @@ Distance::~Distance(){
 }
 
 Face Distance::getFocus(vector<Face> curFrameFaces){
-	sums.reserve(curFrameFaces.size());
+	sums.resize(curFrameFaces.size(), 0.0);
 	curFaces = curFrameFaces;
 	
 	for (int i = 0; i < curFrameFaces.size(); ++i)
@@ -24,9 +24,9 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
 			}
 		}
 	}
-	float min = *min_element(sums.begin(),sums.end()) ;
-    int minIndex = distance(sums.begin(),min_element(sums.begin(),sums.end()));
-    cout << "Min Sum is " << min << " at index "<< minIndex << endl;
+	vector<float>::const_iterator min = min_element(sums.begin(),sums.end());
+    int minIndex = distance(sums.begin(), min_element(sums.begin(),sums.end()));
+    cout << "Min Sum is " << *min << " at index "<< minIndex + 1 << endl;
 
     return curFrameFaces[minIndex];
 }
