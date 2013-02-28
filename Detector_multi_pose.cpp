@@ -292,7 +292,7 @@ int main(int argc, char* argv[])
     //
     //
     /* using opencv */
-    cv::VideoWriter cvWriter("ouput.avi", CV_FOURCC('P', 'I', 'M', '1'), 25.0, cv::Size(800,480));
+    cv::VideoWriter cvWriter("~/Desktop/Release/ouput.avi", CV_FOURCC('P', 'I', 'M', '1'), 25.0, cv::Size(800,480));
    // FFMPEGVideoDestination* fWriter = new FFMPEGVideoDestination("foutput.avi", OKAPI_CODEC_ID_MPEG4, 25.0, cv::Size(640,480), 3800000);
 
     if(!cvWriter.isOpened())
