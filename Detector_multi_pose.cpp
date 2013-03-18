@@ -4,6 +4,7 @@
 #include "face.hpp"
 #include "faceLocator.hpp"
 #include "distance.hpp"
+#include "FeatureCollector.hpp"
 #include <okapi.hpp>
 #include <okapi-gui.hpp>
 #include <okapi-videoio.hpp>
@@ -42,12 +43,17 @@ struct posePair{
 vector< posePair > dposes;
 vector< posePair > eposes;
 
+// for calculate distance and output result
+Distance d;
+FeatureCollector* feature;
+
 void writePoses(const char* filename, vector<posePair> poses){
     ofstream out;
     out.open(filename);
     posePair cur = poses[0];
     int curIndex = 0;
     for(int i = 0; i< poses.size(); i){
+        cout<<"i:"<<i<<endl;
         out<<cur.frameIndex;
         curIndex = cur.frameIndex;
         while(cur.frameIndex == curIndex) {
@@ -56,6 +62,7 @@ void writePoses(const char* filename, vector<posePair> poses){
         }
         out<<endl;
     }
+    cout<<"write file Done"<<endl;
     out.close();
 }
 
@@ -292,7 +299,7 @@ int main(int argc, char* argv[])
     //
     //
     /* using opencv */
-    cv::VideoWriter cvWriter("~/Desktop/Release/ouput.avi", CV_FOURCC('P', 'I', 'M', '1'), 25.0, cv::Size(800,480));
+    cv::VideoWriter cvWriter("ouput.avi", CV_FOURCC('P', 'I', 'M', '1'), 25.0, cv::Size(800,480));
    // FFMPEGVideoDestination* fWriter = new FFMPEGVideoDestination("foutput.avi", OKAPI_CODEC_ID_MPEG4, 25.0, cv::Size(640,480), 3800000);
 
     if(!cvWriter.isOpened())
@@ -310,6 +317,8 @@ int main(int argc, char* argv[])
     }
     cout<<"Src Collection Done"<<endl;
 
+    store->setTotalFrame(--frameIndex);
+
     store->cluster();
     store->printOut();
     store->interpolate();
@@ -325,6 +334,10 @@ int main(int argc, char* argv[])
     src = new FFMPEGVideoSource(video_fn);
     frameIndex = 0;
 
+
+    feature = new FeatureCollector();
+    feature->clear();
+
     while (imgwin->getWindowState() && src->getNextFrame())
     {
         vector<cv::Mat> imgs = generate(src->getImage().clone(), store, my_est, frameIndex++, locator);
@@ -332,10 +345,13 @@ int main(int argc, char* argv[])
 		saveImage("/home/eeuser/dets.bmp", imgs[0]);
         cvWriter<<imgs[0];
     }
+    cout<<"here"<<endl;
+    feature->writePoseDiff(store->getClustered());
+    feature->writeLocaDiff(store->getClustered());
+    cout<<"pose Diff finished"<<endl;
 
     writePoses("interpolated.dat", eposes);
     writePoses("detected.dat", dposes);
-
     /*
     int frameIndex = 0;
     while (imgwin->getWindowState() && src->getNextFrame())
@@ -428,18 +444,25 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     */
     //vector<cv::Rect> curLocations = locator->getLocations(store->getClustered(), frameIndex);
 
+    cout<<"========================"<<endl;
+    cout<<"generate Frame Begins"<<endl;
     // try to distinguish interpolated and detected
     store->generatePoses(my_est, gray,frameIndex);
     vector< vector<Face> > collection = store->getClustered();
     cout<<"collection size:"<<collection.size()<<endl;
 
+    for (int i = 0; i < collection.size(); ++i)
+        feature->writeMouthPix(collection[i][frameIndex], gray, i, frameIndex);
+
     /* With the method of pure voting */
     vector<Face> voted = locator->getVotedFocus(collection, frameIndex);
     cout<<"voted size"<<voted.size()<<endl;
 
-    Distance d;
-    /* with the method of sum of the distance */
+    /* with ithe method of sum of the distance */
     vector<Face> faces = store->getFacesAtFrame(frameIndex);
+
+
+
     cout<<"vector size:"<<faces.size()<<endl;
     vector<Face> minDFaces;
     if(faces.size() != 0){

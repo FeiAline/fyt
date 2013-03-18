@@ -68,6 +68,7 @@ CUDA_ADD_EXECUTABLE(cudaGabor
     heat.cpp
     face.cpp
     distance.cpp
+    FeatureCollector.cpp
     ${SRCS}
 )
 LINK_LIBRARIES("-L/home/eeuser/CUDA_SDK/C/lib -lcutil")

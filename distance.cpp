@@ -5,6 +5,7 @@ using namespace okapi;
 
 Distance::Distance(){
 // do nothing in constructor
+	 cvWriter.open("map.avi", CV_FOURCC('D', 'I', 'V', 'X'), 25.0, cv::Size(800,480));
 }
 Distance::~Distance(){
 }
@@ -28,6 +29,8 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
     int minIndex = distance(sums.begin(), min_element(sums.begin(),sums.end()));
     cout << "Min Sum is " << *min << " at index "<< minIndex + 1 << endl;
 
+    outputFrame();
+
     return curFrameFaces[minIndex];
 }
 
@@ -40,10 +43,11 @@ void Distance::printOut(){
 }
 
 float Distance::getDistance(Face cur, Face proposedFocus){
-	Point cur2D = to2D(cur);
+	Point cur2D = cur.to2D();
 	float curPose = cur.pose;
 
-	Point focus2D = to2D(proposedFocus);
+
+	Point focus2D = proposedFocus.to2D();
 
 	// Method 1:
 	// this method directly calculate point to line distance
@@ -55,21 +59,80 @@ float Distance::getDistance(Face cur, Face proposedFocus){
 	float b = -1.0;
 	float c = cur2D.y - cur2D.x * a;
 
-	float distance = abs(a*focus2D.x + b*focus2D.y +c) / sqrt(a*a + b*b);
+	// One Problem remaining: When the face is at the opposite side, of the viewing angle, we need to make some modification
+	// make judgement if the face is at the right side using Inner product
+	Point faceDifference;
+	faceDifference.x = focus2D.x - cur2D.x;
+	faceDifference.y = focus2D.y - cur2D.y;
+
+	Point viewPoseDirection;
+	viewPoseDirection.x = a;
+	viewPoseDirection.y = 1.0;
+
+	float distance;
+
+	if( innerProduct(faceDifference, viewPoseDirection) > 0) {
+		distance = abs(a*focus2D.x + b*focus2D.y +c) / sqrt(a*a + b*b);
+	}else{
+		distance = sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2)); // maximize the distance 
+	}
 
 	return distance;
 }
 
-Point Distance::to2D(Face f, int frameWidth){
-	int faceWidth = f.width;
-	int horX = f.center.x;
-	// Assuming that the frame width is 640 px
-	float rX = (horX - frameWidth/2)/ faceWidth;
+float Distance::innerProduct(Point a, Point b){
+	return a.x * b.x + a.y * b.y;
+}
 
-	// relative depth
-	float rDepth = 100.0 / faceWidth;
-	Point p;
-	p.x = rX;
-	p.y = rDepth;
-	return p;
+void Distance::outputFrame(int width, int height, int scale){
+	cv::Mat coord(height,width,CV_8UC3);
+	for (int i = 0; i < curFaces.size(); ++i){
+		Point cur = curFaces[i].to2D();
+		cur.x = cur.x * scale;
+		cur.y = cur.y * scale;
+		myPoint(coord, cur);
+		myLine(coord, cur, curFaces[i].pose);
+	}
+	// saveImage("distance.bmp", coord);
+	// TODO make it a video with value
+	cvWriter<<coord;
+}
+
+void Distance::myLine( cv::Mat img, Point start, float pose)
+{
+	cv::Point cvStart; 
+	cv::Point cvEnd; 
+
+	cvStart.x = start.x + img.cols / 2;
+	cvStart.y = img.rows - start.y;
+
+	cvEnd.x = cvStart.x + 100 * sin(pose * PI / 180);
+	cvEnd.y = cvStart.y + 100 * cos(pose * PI / 180);
+
+  	int thickness = 2;
+  	int lineType = 8;
+  	line( img,
+        cvStart,
+        cvEnd,
+        cv::Scalar( 0, 0, 0 ),
+        thickness,
+        lineType );
+}
+
+void Distance::myPoint( cv::Mat img, Point center)
+{
+ 	int thickness = -1;
+ 	int lineType = 8;
+
+	cv::Point cvCenter; 
+
+	cvCenter.x = center.x + img.cols / 2;
+	cvCenter.y = img.rows - center.y;
+
+ 	circle( img,
+ 		cvCenter,
+        10,
+        cv::Scalar( 0, 0, 255 ),
+        thickness,
+        lineType );
 }

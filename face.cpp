@@ -37,7 +37,6 @@ void FaceStore::add(int x, int y, int width, int height, int frameIndex){
 
 vector<vector<Face> > FaceStore::cluster(){
     //clear history
-    totalFrame = curIndex; // store the total number for interation
     clustered.clear();
     cout<<"store size:"<<store.size()<<endl;
 
@@ -74,7 +73,6 @@ vector<vector<Face> > FaceStore::cluster(){
                 if(ex){
                     clustered.push_back(newC);
                 }else{
-                    c_i;
                     clustered.insert(clustered.begin()+c_i, newC);
                 }
             }
@@ -140,10 +138,11 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
         cout<<"cur frameIndex:"<<frameIndex<<endl;
         cout<<"pre frameIndex:"<<preFrameIndex<<endl;
         */
-        if(preFrameIndex == frameIndex) {
-            cout<<"at fillin preIndex == frameIndex"<<endl;
+        if(preFrameIndex == frameIndex && frameIndex != 0) { // same frame with two faces
+            cout<<"at fillin preIndex == frameIndex, Index is "<< eIndex; cout<<" frameIndex is "<< frameIndex<<endl;
             cur.print();
             input[eIndex-1].print();
+            continue;
         }
             
         if ( preFrameIndex == 0 ) {  // begin from the first face detected
@@ -201,10 +200,16 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
         preFrameIndex = frameIndex;
     }
 
+    eIndex--;
+
     /* check if all frames are filled in */
     if(preFrameIndex != totalFrame) {
-        for(int i = preFrameIndex; i < totalFrame; i++)
-            t.push_back(input[--eIndex]);
+        int i = preFrameIndex;
+        for(i; i < totalFrame; i++){
+            t.push_back(input[eIndex]);
+        }
+        cout<<i - preFrameIndex<<" dummy added at the end"<<endl;
+        cout<<"totalFrame:"<<totalFrame<<endl;
     }
 
     return t;
@@ -214,10 +219,18 @@ void FaceStore::reduceNoise(int tolerance){
     // Algorithm for reducing noise: 
     // we check if the face is detected every tolernace frames 
     // if there are more than 10 instances of the face, it would be confirmed to have a face. 
+    cout<< "clustered size "<<clustered.size()<<endl;
     for(int i = 0; i< clustered.size(); i++) {
-        if(clustered[i].size() > 10)
+        if(clustered[i].size() > 10){
+            cout<<i<<" "<<"is a clutered"<<endl;
             continue;
+        }
         else {
+            if( clustered[i].size() == 1){
+                clustered.erase(clustered.begin()+i);
+                cout<< "cluster "<<i<<" erased"<<endl;
+                break;
+            }
             Face cur = clustered[i][0];
             int preIndex = cur.frameIndex;
             for( int j = 1; j < clustered[i].size(); j++) {
@@ -233,12 +246,13 @@ void FaceStore::reduceNoise(int tolerance){
                     // git rid of this cluster
                     // Notice: Don't know about the index problem
                     clustered.erase(clustered.begin()+i);
-                    cout<< "cluster erased"<<endl;
+                    cout<< "cluster "<<i<<" erased"<<endl;
                     break;
                 }
             }
         }
     }
+    cout<< "clustered size "<<clustered.size()<<endl;
 }
 
 void FaceStore::sort(){

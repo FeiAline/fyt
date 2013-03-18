@@ -14,6 +14,11 @@
 #include <cv.h>
 #include <math.h>
 
+struct Point
+{
+    float x;
+    float y;
+};
 
 class FaceStore;
 class Estimator;
@@ -28,8 +33,8 @@ class Face {
         }
         int frameIndex;
         cv::Point center;
-        int width;
-        int height;
+        int width; // y
+        int height; // x
         bool intered;
         float pose;
 
@@ -48,6 +53,19 @@ class Face {
             curL.width = width;
             curL.height = height;
             return curL;
+        }
+        Point to2D(int frameWidth = 640){
+            int faceWidth = width;
+            int horX = center.x;
+            // Assuming that the frame width is 640 px
+            float rX = (horX - frameWidth/2)/ faceWidth;
+
+            // relative depth
+            float rDepth = 100.0 / faceWidth;
+            Point p;
+            p.x = rX;
+            p.y = rDepth;
+            return p;
         }
         void print(){
             cout<<"Face debug ---- "<<endl;
@@ -75,6 +93,7 @@ class FaceStore
         vector<vector<int> > getVotes() const;
         void sort();
         void generatePoses(PhM::pose_estimator& my_est, cv::Mat& gray, int frameIndex);
+        void setTotalFrame(int n){totalFrame = n;};
         
 
     private:
