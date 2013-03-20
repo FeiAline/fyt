@@ -13,7 +13,11 @@ using namespace okapi;
 
 
 /* this file is for data collection for new feature */
-FeatureCollector::FeatureCollector(){
+FeatureCollector::FeatureCollector(int clusterNumber){
+    prev_mouth.resize(clusterNumber, -1);
+    totalClusterNumber = clusterNumber;
+    prev_index = 0;
+    tempFaceFrame = cv::Mat::zeros(480, 800, CV_8UC3);
 }
 
 FeatureCollector::~FeatureCollector(){
@@ -34,7 +38,6 @@ void FeatureCollector::writePoseDiff(vector< vector<Face> > store){
     		}
 
     		float poseDiff = cur.pose - prevPose;
-
     		out<<i<<" "<<j<<" "<<poseDiff<<endl;
 
     		prevPose = cur.pose;
@@ -86,12 +89,15 @@ void FeatureCollector::writeLocaDiff(vector< vector<Face> > store){
 
 }
 
-void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterNumber, int frameIndex){
+void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterNumber, int frameIndex, cv::VideoWriter writer){
     /* write format :
     cluster          frame number            Mouth Pix
     */
 	ofstream out;
-    out.open("mouth_pix.txt", fstream::in | fstream::out | fstream::app);
+    ofstream diff_out;
+
+    out.open("features/mouth_pix.txt", fstream::in | fstream::out | fstream::app);
+    diff_out.open("features/mouth_diff.txt", fstream::in | fstream::out | fstream::app);
 
     cout<<"writing new pix"<<endl;
 
@@ -103,7 +109,6 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
 
 
     cv::Mat face = gray(cur.toRect());
-    cout<<"face got "<<endl;
     // how to show out the image 
     // taking the lower 1/3 part of the region
     cv::Mat mouthRegion = face(cv::Rect(0, cur.height - cur.height/3 - 1, cur.width, cur.height/3 + 1));
@@ -111,45 +116,61 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
     saveImage("mouth.bmp", mouthRegion);
     saveImage("face.bmp", face);
 
-    cout<<"mouthRegion got "<<endl;
     cout<<mouthRegion.size()<<endl;
     int dark_count = countMouth(mouthRegion);
-    out<<clusterNumber<<" "<<frameIndex<<" "<<dark_count<<endl;
-/*
-    for (int i = 0; i < store.size(); ++i)
-    {
-        for (int j = 0; j < store[i].size(); ++j)
-        {
-            Face cur = store[i][j];
-            cv::Mat face = gray(cur.toRect());
-            // how to show out the image 
-            // taking the lower 1/3 part of the region
-            cv::Mat mouthRegion = face(cv::Rect(cur.height - cur.height/3, 0, cur.height/3, cur.width));
-
-            int dark_count = countMouth(mouthRegion);
-
-            out<<i<<" "<<j<<" "<<dark_count<<endl;
-        }
+    int diff_count;
+    if( prev_mouth[clusterNumber] == -1){
+        diff_count = 0;
+    }else {
+        diff_count = abs(prev_mouth[clusterNumber] - dark_count);
     }
-    */
+
+    cout<<"prev:"<<prev_mouth[clusterNumber]<<" dark_count:"<<dark_count<<endl;
+    prev_mouth[clusterNumber] = dark_count;
+
+    out<<clusterNumber<<" "<<frameIndex<<" "<<dark_count<<endl;
+    diff_out<<clusterNumber<<" "<<frameIndex<<" "<<diff_count<<endl;
+
     cout<<"mouth_pix Done index:"<<frameIndex<<endl;
     out.close();
+
+
+    /* Here I need to show those pixels that is blow the threshod */
+
+    for(int i=0; i<mouthRegion.rows; i++){
+        for(int j=0; j<mouthRegion.cols; j++){
+            if(mouthRegion.data[mouthRegion.step[0]*i + mouthRegion.step[1]* j + 0] < 30){
+                mouthRegion.data[mouthRegion.step[0]*i + mouthRegion.step[1]* j + 0] = 255;
+                mouthRegion.data[mouthRegion.step[0]*i + mouthRegion.step[1]* j + 1] = 255;
+                mouthRegion.data[mouthRegion.step[0]*i + mouthRegion.step[1]* j + 2] = 255;
+            }
+        }
+    } 
+
+
+    writeVideoMouth(mouthRegion,clusterNumber,frameIndex,writer);
 }
 
 void FeatureCollector::clear(){
     ofstream out;
-    out.open("mouth_pix.txt");
+    out.open("features/mouth_pix.txt");
+    out.close();
+    out.open("features/mouth_diff.txt");
     out.close();
     cout<<"cleared"<<endl;
 }
 
 void FeatureCollector::writeMouthDiff(vector< vector<Face> > store){
+    // this function is written in mouthpix as well
 	ofstream out;
-    out.open("mouth_diff.txt");
-
-
-
-    
+    out.open("mouth_diff.txt", fstream::in | fstream::out | fstream::app);
+/*
+    if(cur.isDummy()){
+        out.close();
+        cout<<"dummy"<<endl;
+        return;
+    }
+    */
     cout<<"mouth_diff Done"<<endl;
     out.close();
 
@@ -158,4 +179,25 @@ void FeatureCollector::writeMouthDiff(vector< vector<Face> > store){
 
 int FeatureCollector::countMouth(const cv::Mat& mouthRegion, int threshold){
     return cv::countNonZero(mouthRegion <= threshold);
+}
+
+void FeatureCollector::writeVideoMouth(cv::Mat mouthRegion, int clusterNumber, int frameIndex, cv::VideoWriter writer){
+    if(frameIndex != prev_index){
+        // another iteration
+        saveImage("last.bmp", tempFaceFrame);
+        writer<<tempFaceFrame;        
+        tempFaceFrame = cv::Mat::zeros(480, 800, CV_8UC3);
+        prev_index = frameIndex;
+    }
+
+    cout<<"mouthRegion:"<<mouthRegion.size()<<endl;
+
+    saveImage("mouthRegion_TTT.bmp", mouthRegion);
+
+    cv::Mat tempFace(mouthRegion.cols,mouthRegion.rows,CV_8UC3); 
+    cvtColor(mouthRegion,tempFace,CV_GRAY2BGR);
+
+    // normal operations
+    cv::Mat dst_roi = tempFaceFrame(cv::Rect((150+mouthRegion.cols) * (clusterNumber + 1), 70 , mouthRegion.cols, mouthRegion.rows));
+    tempFace.copyTo(dst_roi);
 }

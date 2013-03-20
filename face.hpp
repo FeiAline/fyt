@@ -94,6 +94,7 @@ class FaceStore
         void sort();
         void generatePoses(PhM::pose_estimator& my_est, cv::Mat& gray, int frameIndex);
         void setTotalFrame(int n){totalFrame = n;};
+        int getClusterSize() {return clustered.size();};
         
 
     private:

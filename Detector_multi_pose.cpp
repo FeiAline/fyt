@@ -72,7 +72,7 @@ static const char help_str[] =
 
 // function declare
 void collectFace(const cv::Mat& img, PhM::PhMPyramid& pyramid, FaceStore* store, int frameIndex);
-vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimator& my_est, int frameIndex, FaceLocator* locator);
+vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimator& my_est, int frameIndex, FaceLocator* locator, cv::VideoWriter);
 
 cv::Mat run_detectors(const cv::Mat& img, PhM::PhMPyramid& pyramid, PhM::pose_estimator& my_est, Heat* heatGraph, FaceLocator* locator, FaceStore* store, int frameIndex)
 {
@@ -299,7 +299,8 @@ int main(int argc, char* argv[])
     //
     //
     /* using opencv */
-    cv::VideoWriter cvWriter("ouput.avi", CV_FOURCC('P', 'I', 'M', '1'), 25.0, cv::Size(800,480));
+    cv::VideoWriter cvWriter("ouput.avi", CV_FOURCC('M', 'J', 'P', 'G'), 25.0, cv::Size(800,480), 1);
+    cv::VideoWriter faceWriter("face.avi", CV_FOURCC('M', 'P', '4', '2'), 25.0, cv::Size(800,480), 1);
    // FFMPEGVideoDestination* fWriter = new FFMPEGVideoDestination("foutput.avi", OKAPI_CODEC_ID_MPEG4, 25.0, cv::Size(640,480), 3800000);
 
     if(!cvWriter.isOpened())
@@ -335,15 +336,17 @@ int main(int argc, char* argv[])
     frameIndex = 0;
 
 
-    feature = new FeatureCollector();
+    feature = new FeatureCollector(store->getClusterSize());
     feature->clear();
 
     while (imgwin->getWindowState() && src->getNextFrame())
     {
-        vector<cv::Mat> imgs = generate(src->getImage().clone(), store, my_est, frameIndex++, locator);
+        vector<cv::Mat> imgs = generate(src->getImage().clone(), store, my_est, frameIndex++, locator, faceWriter);
         imgwin->setImage("Cam", imgs[0]);
 		saveImage("/home/eeuser/dets.bmp", imgs[0]);
-        cvWriter<<imgs[0];
+        cv::Mat output;
+        cvtColor(imgs[0], output, CV_RGB2BGR);
+        cvWriter<<output;
     }
     cout<<"here"<<endl;
     feature->writePoseDiff(store->getClustered());
@@ -426,7 +429,7 @@ void collectFace(const cv::Mat& img, PhM::PhMPyramid& pyramid, FaceStore* store,
 	}
 }
 
-vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimator& my_est, int frameIndex, FaceLocator* locator){
+vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimator& my_est, int frameIndex, FaceLocator* locator, cv::VideoWriter faceWriter){
 
     /* concert to gray */
     cv::Mat gray;
@@ -452,7 +455,7 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     cout<<"collection size:"<<collection.size()<<endl;
 
     for (int i = 0; i < collection.size(); ++i)
-        feature->writeMouthPix(collection[i][frameIndex], gray, i, frameIndex);
+        feature->writeMouthPix(collection[i][frameIndex], gray, i, frameIndex, faceWriter);
 
     /* With the method of pure voting */
     vector<Face> voted = locator->getVotedFocus(collection, frameIndex);

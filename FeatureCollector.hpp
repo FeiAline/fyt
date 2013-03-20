@@ -18,20 +18,23 @@
 class FeatureCollector {
 
 public:
-	FeatureCollector();
+	FeatureCollector(int clusterNumber);
 	~FeatureCollector();
 
 	void writePoseDiff(vector< vector<Face> > store); // create a text file and write the difference bewtween two faces.
 	void writeLocaDiff(vector< vector<Face> > store);
 
-	void writeMouthPix(Face cur, const cv::Mat& gray, int clusterNumber, int frameIndex);
+	void writeMouthPix(Face cur, const cv::Mat& gray, int clusterNumber, int frameIndex, cv::VideoWriter);
 	void writeMouthDiff(vector< vector<Face> > store);
 	void clear();
 
 private:
-	int countMouth(const cv::Mat& gray, int threshold = 40);
-	vector< vector<int> > mouthPix;
-
+	void writeVideoMouth(cv::Mat mouthRegion, int clusterNumber,  int frameIndex, cv::VideoWriter);
+	int countMouth(const cv::Mat& gray, int threshold = 60);
+	vector<int> prev_mouth;
+	int totalClusterNumber;
+	cv::Mat tempFaceFrame;
+	int prev_index;
 };
 
 
