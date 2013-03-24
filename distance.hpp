@@ -17,6 +17,9 @@
 
 #define PI 3.14159265
 
+#define DIS = 0
+#define NORDIS = 1
+
 
 class Distance
 {
@@ -33,6 +36,9 @@ private:
 	void  outputFrame(int width = 640, int height = 480, int scale = 30);
 	void  myLine( cv::Mat img, Point start, float angle );
 	void  myPoint( cv::Mat img, Point center );
+
+	void writeInfo(int clusterNukmber, int frameIndex, float dis, int file);
+
 	/* data */
 	std::vector<Face> curFaces;
 	std::vector<float> sums;

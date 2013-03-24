@@ -328,8 +328,7 @@ vector<Face> FaceStore::getFacesAtFrame(int frameIndex) const {
     for (int i = 0; i < clustered.size(); ++i)
     {
         Face f = clustered[i][frameIndex];
-        if(!f.isDummy())
-            v.push_back(f);
+        v.push_back(f);
     }
     return v;
 }

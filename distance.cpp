@@ -16,12 +16,26 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
 	
 	for (int i = 0; i < curFrameFaces.size(); ++i)
 	{
+		if(curFrameFaces[i].isDummy()){
+			sums[i] += 1000; //large number so that it could not be chosen
+			continue;
+		}
+
 		sums[i] = 0.0;
 		for (int j = 0; j < curFrameFaces.size(); ++j)
 		{
 			if(i!=j){
+				if(curFrameFaces[j].isDummy()){
+					continue;
+				}
+				float angle = getNormalizedDistance(curFrameFaces[j], curFrameFaces[i]);
 				float dis = getDistance(curFrameFaces[j], curFrameFaces[i]);
-				sums[i] += dis;
+
+				// record down information 
+				writerDisInfo(i, curFrameFaces[i].frameIndex, dis);
+				writerAngleInfo(i, curFrameFaces[i].frameIndex, angle);
+
+				sums[i] += angle;
 			}
 		}
 	}
@@ -42,7 +56,48 @@ void Distance::printOut(){
 	}
 }
 
+float Distance::getNormalizedDistance(Face cur, Face proposedFocus){
+	Point cur2D = cur.to2D();
+	float curPose = cur.pose;
+
+
+	Point focus2D = proposedFocus.to2D();
+
+	// Method 1:
+	// this method directly calculate point to line distance
+
+	// convert degree to pi
+	float angle = curPose * PI / 180;
+	// line function ax + by + c = 0
+	float a = tan(angle);
+	float b = -1.0;
+	float c = cur2D.y - cur2D.x * a;
+
+	// One Problem remaining: When the face is at the opposite side, of the viewing angle, we need to make some modification
+	// make judgement if the face is at the right side using Inner product
+	Point faceDifference;
+	faceDifference.x = focus2D.x - cur2D.x;
+	faceDifference.y = focus2D.y - cur2D.y;
+
+	Point viewPoseDirection;
+	viewPoseDirection.x = a;
+	viewPoseDirection.y = 1.0;
+
+	float distance;
+
+	if( innerProduct(faceDifference, viewPoseDirection) > 0) {
+		distance = abs(a*focus2D.x + b*focus2D.y +c) / sqrt(a*a + b*b);
+		angle = distance / sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2)); // get the angle 
+	}else{
+		angle = 1; // maximize the distance 
+	}
+
+	return angle;
+}
+
+
 float Distance::getDistance(Face cur, Face proposedFocus){
+
 	Point cur2D = cur.to2D();
 	float curPose = cur.pose;
 
@@ -74,9 +129,8 @@ float Distance::getDistance(Face cur, Face proposedFocus){
 	if( innerProduct(faceDifference, viewPoseDirection) > 0) {
 		distance = abs(a*focus2D.x + b*focus2D.y +c) / sqrt(a*a + b*b);
 	}else{
-		distance = sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2)); // maximize the distance 
+		distance = sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2)); // get the angle 
 	}
-
 	return distance;
 }
 
@@ -136,3 +190,13 @@ void Distance::myPoint( cv::Mat img, Point center)
         thickness,
         lineType );
 }
+
+void Distance::writeInfo(int clusterNukmber, int frameIndex, float dis, int file ){
+	ofstream out;
+
+
+
+	out.close();
+}
+
+

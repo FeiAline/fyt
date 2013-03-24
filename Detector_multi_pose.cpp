@@ -459,14 +459,12 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
 
     /* With the method of pure voting */
     vector<Face> voted = locator->getVotedFocus(collection, frameIndex);
-    cout<<"voted size"<<voted.size()<<endl;
+    //cout<<"voted size"<<voted.size()<<endl;
 
     /* with ithe method of sum of the distance */
     vector<Face> faces = store->getFacesAtFrame(frameIndex);
-
-
-
-    cout<<"vector size:"<<faces.size()<<endl;
+//    cout<<"vector size:"<<faces.size()<<endl;
+    
     vector<Face> minDFaces;
     if(faces.size() != 0){
         minDFaces.push_back(d.getFocus(faces));

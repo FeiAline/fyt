@@ -31,7 +31,12 @@ public:
 private:
 	void writeVideoMouth(cv::Mat mouthRegion, int clusterNumber,  int frameIndex, cv::VideoWriter);
 	int countMouth(const cv::Mat& gray, int threshold = 60);
+	float getThreshold(cv::Mat face);
+
+	vector<float> prev_face_pixel;	
 	vector<int> prev_mouth;
+
+	vector<float> thresholds;
 	int totalClusterNumber;
 	cv::Mat tempFaceFrame;
 	int prev_index;
