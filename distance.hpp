@@ -37,6 +37,8 @@ private:
 	void  myLine( cv::Mat img, Point start, float angle );
 	void  myPoint( cv::Mat img, Point center );
 
+	void clearFeatureData();
+
 	void writeInfo(int clusterNukmber, int frameIndex, float dis, int file);
 
 	/* data */

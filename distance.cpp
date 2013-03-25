@@ -5,7 +5,10 @@ using namespace okapi;
 
 Distance::Distance(){
 // do nothing in constructor
-	 cvWriter.open("map.avi", CV_FOURCC('D', 'I', 'V', 'X'), 25.0, cv::Size(800,480));
+	cvWriter.open("map.avi", CV_FOURCC('D', 'I', 'V', 'X'), 25.0, cv::Size(800,480));
+
+
+	clearFeatureData();
 }
 Distance::~Distance(){
 }
@@ -32,8 +35,8 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
 				float dis = getDistance(curFrameFaces[j], curFrameFaces[i]);
 
 				// record down information 
-				writerDisInfo(i, curFrameFaces[i].frameIndex, dis);
-				writerAngleInfo(i, curFrameFaces[i].frameIndex, angle);
+				writerInfo(i, curFrameFaces[i].frameIndex, dis, DIS);
+				writerInfo(i, curFrameFaces[i].frameIndex, angle, NORDIS);
 
 				sums[i] += angle;
 			}
@@ -191,12 +194,28 @@ void Distance::myPoint( cv::Mat img, Point center)
         lineType );
 }
 
-void Distance::writeInfo(int clusterNukmber, int frameIndex, float dis, int file ){
+void Distance::writeInfo(int clusterNukmber, int frameIndex, float data, int file ){
 	ofstream out;
+	switch(file){
+		case DIS:
+			out.open("features/distance.txt", fstream::in | fstream::out | fstream::app);
+			break;
+		case NORDIS:
+			out.open("features/normalized_distance.txt", fstream::in | fstream::out | fstream::app);
+			break;
+		default:
+			cout<<"file type was wrong "<<endl;
+			break;
+	}
 
-
+	out<<clusterNukmber<<' '<<frameIndex<<' '<<data<<endl;
 
 	out.close();
 }
-
-
+void Distance::clearFeatureData(){
+	ofstream out;
+    out.open("features/distance.txt");
+    out.close();
+    out.open("features/normalized_distance.txt");
+    out.close();
+}
