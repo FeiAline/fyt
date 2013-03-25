@@ -13,7 +13,7 @@ Distance::Distance(){
 Distance::~Distance(){
 }
 
-Face Distance::getFocus(vector<Face> curFrameFaces){
+int Distance::getFocus(vector<Face> curFrameFaces){
 	sums.resize(curFrameFaces.size(), 0.0);
 	curFaces = curFrameFaces;
 	
@@ -35,8 +35,8 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
 				float dis = getDistance(curFrameFaces[j], curFrameFaces[i]);
 
 				// record down information 
-				writerInfo(i, curFrameFaces[i].frameIndex, dis, DIS);
-				writerInfo(i, curFrameFaces[i].frameIndex, angle, NORDIS);
+				writeInfo(i, curFrameFaces[i].frameIndex, dis, DIS);
+				writeInfo(i, curFrameFaces[i].frameIndex, angle, NORDIS);
 
 				sums[i] += angle;
 			}
@@ -46,9 +46,13 @@ Face Distance::getFocus(vector<Face> curFrameFaces){
     int minIndex = distance(sums.begin(), min_element(sums.begin(),sums.end()));
     cout << "Min Sum is " << *min << " at index "<< minIndex + 1 << endl;
 
-    outputFrame();
-
-    return curFrameFaces[minIndex];
+    if( *min >= 1000){
+    	// all dummy
+    	return -1;
+    }else{
+	    outputFrame();
+	    return minIndex;
+	}
 }
 
 void Distance::printOut(){
@@ -144,11 +148,13 @@ float Distance::innerProduct(Point a, Point b){
 void Distance::outputFrame(int width, int height, int scale){
 	cv::Mat coord(height,width,CV_8UC3);
 	for (int i = 0; i < curFaces.size(); ++i){
-		Point cur = curFaces[i].to2D();
-		cur.x = cur.x * scale;
-		cur.y = cur.y * scale;
-		myPoint(coord, cur);
-		myLine(coord, cur, curFaces[i].pose);
+		if(!curFaces[i].isDummy()) {
+			Point cur = curFaces[i].to2D();
+			cur.x = cur.x * scale;
+			cur.y = cur.y * scale;
+			myPoint(coord, cur);
+			myLine(coord, cur, curFaces[i].pose);
+		}
 	}
 	// saveImage("distance.bmp", coord);
 	// TODO make it a video with value

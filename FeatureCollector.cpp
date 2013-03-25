@@ -15,7 +15,7 @@ using namespace okapi;
 /* this file is for data collection for new feature */
 FeatureCollector::FeatureCollector(int clusterNumber){
     prev_mouth.resize(clusterNumber, -1);
-    prev_face.resize(clusterNumber, -1);
+    prev_face_pixel.resize(clusterNumber, -1);
     thresholds.resize(clusterNumber, -1);
     totalClusterNumber = clusterNumber;
     prev_index = 0;
@@ -95,25 +95,37 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
     /* write format :
     cluster          frame number            Mouth Pix
     */
+
+    if(cur.isDummy()){
+        cout<<"dummy"<<endl;
+        return;
+    }
 	ofstream out;
     ofstream diff_out;
+    ofstream face_diff_out;
+    ofstream face_out;
 
     face_diff_out.open("features/face_pix_diff.txt", fstream::in | fstream::out | fstream::app);
+    face_out.open("features/face_pix.txt", fstream::in | fstream::out | fstream::app);
+
+    cv::Mat face = gray(cur.toRect());
 
     float cur_face_pixel = 0;
-    for(int i=0; i<cur.rows; i++){
-        for(int j=0; j<mouthRegion.cols; j++){
-            cur_face_pixel += mouthRegion.data[mouthRegion.step[0]*i + mouthRegion.step[1]* j];
+    for(int i=0; i<face.rows; i++){
+        for(int j=0; j<face.cols; j++){
+            cur_face_pixel += face.data[face.step[0]*i + face.step[1]* j];
         }
     } 
 
     // taking the average
-    cur_face_pixel = cur_face_pixel / (cur.width*cur.height);
+    cur_face_pixel = cur_face_pixel / (face.rows*face.cols);
 
-    if(prev_face[clusterNumber] == -1){
-        prev_face[clusterNumber] = cur_face_pixel;
+    if(prev_face_pixel[clusterNumber] == -1){
+        prev_face_pixel[clusterNumber] = cur_face_pixel;
     }else {
-        face_diff_out<<clusterNumber<<" "<<frameIndex<<" "<<abs(cur_face_pixel - prev_face[clusterNumber]<<endl;
+        face_out<<clusterNumber<<" "<<frameIndex<<" "<<cur_face_pixel<<endl;
+        face_diff_out<<clusterNumber<<" "<<frameIndex<<" "<<abs(cur_face_pixel - prev_face_pixel[clusterNumber])<<endl;
+        prev_face_pixel[clusterNumber] = cur_face_pixel;
     }
 
 
@@ -122,14 +134,7 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
 
     cout<<"writing new pix"<<endl;
 
-    if(cur.isDummy()){
-        out.close();
-        cout<<"dummy"<<endl;
-        return;
-    }
 
-
-    cv::Mat face = gray(cur.toRect());
     // how to show out the image 
     // taking the lower 1/3 part of the region
     cv::Mat mouthRegion = face(cv::Rect(0, cur.height - cur.height/3 - 1, cur.width, cur.height/3 + 1));
@@ -159,6 +164,7 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
     out.close();
     diff_out.close();
     face_diff_out.close();
+    face_out.close();
 
 
     /* Here I need to show those pixels that is blow the threshod */
@@ -183,6 +189,8 @@ void FeatureCollector::clear(){
     out.open("features/mouth_pix.txt");
     out.close();
     out.open("features/mouth_diff.txt");
+    out.close();
+    out.open("features/face_pix_diff.txt");
     out.close();
     cout<<"cleared"<<endl;
 }

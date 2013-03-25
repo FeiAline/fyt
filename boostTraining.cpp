@@ -63,9 +63,6 @@ void generateData(){
 	maxClusterSize = 0;
 	maxFrameIndex = 0;
 	vector< vector<float> > loca_diff = readText("loca_diff.txt");
-
-	cout<<loca_diff.size()<<endl;
-
 }
 
 vector< vector<float> > readText(char* fileName){

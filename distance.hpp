@@ -17,8 +17,8 @@
 
 #define PI 3.14159265
 
-#define DIS = 0
-#define NORDIS = 1
+#define DIS 0
+#define NORDIS 1
 
 
 class Distance
@@ -26,11 +26,12 @@ class Distance
 public:
 	Distance();
 	~Distance();
-	Face getFocus(vector<Face> curFrameFaces);
+	int getFocus(vector<Face> curFrameFaces);
 	void printOut(); // for debug use
 
 private:
 	float getDistance(Face cur, Face proposedFocus);
+	float getNormalizedDistance(Face cur, Face proposedFocus);
 	Point to2D(Face f, int frameWidth = 640);
 	float innerProduct(Point a, Point b);
 	void  outputFrame(int width = 640, int height = 480, int scale = 30);

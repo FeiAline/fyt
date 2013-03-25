@@ -467,12 +467,18 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     
     vector<Face> minDFaces;
     if(faces.size() != 0){
-        minDFaces.push_back(d.getFocus(faces));
-        d.printOut();
+        int index = d.getFocus(faces);
+        if(index != -1) {
+            minDFaces.push_back(faces[index]);
+            d.printOut();
+        }else{
+            cout<<"all dummy"<<endl;
+        }
         //minDFace.print();
     }else{
         cout<<"distance part: no faces are given"<<endl;
     }
+    cout<<"get Min D Faces"<<endl;
 
     vector<cv::Rect> normal = locator->getNormal(store->getClustered(), frameIndex);
     vector<cv::Rect> intered = locator->getIntered(store->getClustered(), frameIndex);
