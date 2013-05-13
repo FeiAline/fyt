@@ -44,7 +44,8 @@ private:
 
 	/* data */
 	std::vector<Face> curFaces;
-	std::vector<float> sums;
+	std::vector<float> sums_angle;
+	std::vector<float> sums_distance;
 	cv::VideoWriter cvWriter;
 };
 

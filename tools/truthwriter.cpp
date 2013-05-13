@@ -63,7 +63,7 @@ int main(int argc, char const *argv[])
 		int endNumber = v[2];
 
 		for(int i = startNumber; i<= endNumber; i++){
-			out<<clusterNumber<<' '<<i<<' '<<'1'<<endl;
+			out<<clusterNumber<<' '<<i<<' '<<'a'<<endl;
 		}
 
 		cout<<"current frameIndex "<<endNumber<<endl;
@@ -73,4 +73,3 @@ int main(int argc, char const *argv[])
 	cout<<"end normally"<<endl;
 	return 0;
 }
-

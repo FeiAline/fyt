@@ -67,6 +67,7 @@ CUDA_ADD_EXECUTABLE(cudaGabor
     GRNN.cpp
     heat.cpp
     face.cpp
+    boost.cpp
     distance.cpp
     FeatureCollector.cpp
     ${SRCS}
@@ -76,10 +77,10 @@ LINK_LIBRARIES("-L/usr/local/include/opencv2")
 target_link_libraries(cudaGabor okapi okapi-gui okapi-videoio dc1394 /usr/lib/libraw1394.so.11 /usr/local/include/triclops/lib/libpgrlibdcstereo.a)
 #target_link_libraries(cudaGabor /usr/local/lib/libavformat.so /usr/local/lib/libavutil.so /usr/local/lib/libavcodec.so)
 target_link_libraries(cudaGabor /home/eeuser/triclops/lib/libtriclops.a /home/eeuser/triclops/lib/libpnmutils.a)
-target_link_libraries(cudaGabor /usr/local/lib/libopencv_highgui.so.2.2 opencv_imgproc opencv_video)
+target_link_libraries(cudaGabor /usr/local/lib/libopencv_highgui.so.2.2 opencv_imgproc opencv_video )
+target_link_libraries(cudaGabor /usr/local/lib/libopencv_ml.so.2.2 )
 #target_link_libraries(cudaGabor okapi okapi-gui okapi-videoio dc1394 /usr/lib/libraw1394.so.11 /home/fjjiang/work/pgrlibdcstereo/libpgrlibdcstereo.a)
 
 ##target_link_libraries(cudagabor okapi ${CUDA_TARGET_LINK} ${CUDA_CUT_TARGET_LINK})
 ##target_link_libraries(cudatest okapi  ${CUDA_TARGET_LINK} ${CUDA_CUT_TARGET_LINK})
  
-

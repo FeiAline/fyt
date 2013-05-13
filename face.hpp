@@ -40,7 +40,7 @@ class Face {
 
         bool near(Face compare){
             double curD = sqrt(pow((center.x-compare.center.x),2) + pow((center.y - compare.center.y),2));
-            if(curD < 40)
+            if(curD < 100)
                 return true;
             else
                 return false;

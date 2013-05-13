@@ -6,25 +6,35 @@ using namespace okapi;
 Distance::Distance(){
 // do nothing in constructor
 	cvWriter.open("map.avi", CV_FOURCC('D', 'I', 'V', 'X'), 25.0, cv::Size(800,480));
-
-
 	clearFeatureData();
 }
 Distance::~Distance(){
 }
 
 int Distance::getFocus(vector<Face> curFrameFaces){
-	sums.resize(curFrameFaces.size(), 0.0);
+	sums_angle.resize(curFrameFaces.size(), 0.0);
+	sums_distance.resize(curFrameFaces.size(), 0.0);
 	curFaces = curFrameFaces;
 	
+	int validFace = 0;
+
+	// check validFace 
+	for (int i = 0; i < curFrameFaces.size(); ++i) {
+		if(!curFrameFaces[i].isDummy())
+			validFace ++;
+	}
+
+
 	for (int i = 0; i < curFrameFaces.size(); ++i)
 	{
 		if(curFrameFaces[i].isDummy()){
-			sums[i] += 1000; //large number so that it could not be chosen
+			sums_angle[i] += 10; //large number so that it could not be chosen
+			sums_distance[i] += 1000; //large number so that it could not be chosen
 			continue;
 		}
 
-		sums[i] = 0.0;
+		sums_angle[i] = 0.0;
+		sums_distance[i] = 0.0;
 		for (int j = 0; j < curFrameFaces.size(); ++j)
 		{
 			if(i!=j){
@@ -35,18 +45,20 @@ int Distance::getFocus(vector<Face> curFrameFaces){
 				float dis = getDistance(curFrameFaces[j], curFrameFaces[i]);
 
 				// record down information 
-				writeInfo(i, curFrameFaces[i].frameIndex, dis, DIS);
-				writeInfo(i, curFrameFaces[i].frameIndex, angle, NORDIS);
 
-				sums[i] += angle;
+				sums_angle[i] += angle / (validFace - 1);
+				sums_distance[i] += dis / (validFace - 1);
 			}
 		}
+		writeInfo(i, curFrameFaces[i].frameIndex, sums_distance[i], DIS);
+		writeInfo(i, curFrameFaces[i].frameIndex, sums_angle[i], NORDIS);
 	}
-	vector<float>::const_iterator min = min_element(sums.begin(),sums.end());
-    int minIndex = distance(sums.begin(), min_element(sums.begin(),sums.end()));
+
+	vector<float>::const_iterator min = min_element(sums_angle.begin(),sums_angle.end());
+    int minIndex = distance(sums_angle.begin(), min_element(sums_angle.begin(),sums_angle.end()));
     cout << "Min Sum is " << *min << " at index "<< minIndex + 1 << endl;
 
-    if( *min >= 1000){
+    if( *min >= 10){
     	// all dummy
     	return -1;
     }else{
@@ -59,7 +71,7 @@ void Distance::printOut(){
 	for (int i = 0; i < curFaces.size(); ++i)
 	{
 		cout<<"center:"<<curFaces[i].center.x<<" "<<curFaces[i].center.y;
-		cout<<" sum:"<<sums[i]<<endl;
+		cout<<" sum:"<<sums_angle[i]<<endl;
 	}
 }
 
@@ -94,7 +106,13 @@ float Distance::getNormalizedDistance(Face cur, Face proposedFocus){
 
 	if( innerProduct(faceDifference, viewPoseDirection) > 0) {
 		distance = abs(a*focus2D.x + b*focus2D.y +c) / sqrt(a*a + b*b);
-		angle = distance / sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2)); // get the angle 
+
+		// Cos change rapidly at angle near 90, so we need to make use of this
+		// 1 - cos
+		// projection length
+		float faceD = sqrt(pow(faceDifference.x,2) + pow(faceDifference.y,2));
+		float projection = sqrt(pow(faceD,2) - pow(distance,2));
+		angle = 1 - projection / faceD; // get the normalized distance
 	}else{
 		angle = 1; // maximize the distance 
 	}

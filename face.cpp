@@ -20,7 +20,7 @@ FaceStore::FaceStore(){
 FaceStore::~FaceStore(){
 }
 
-void FaceStore::add(int x, int y, int width, int height, int frameIndex){
+void FaceStore::add(int x, int y, int width, int height, int curFIndex){
     // add one face into the storage
     Face newFace;
     newFace.center.x = x + width / 2.0;
@@ -28,11 +28,11 @@ void FaceStore::add(int x, int y, int width, int height, int frameIndex){
 
     newFace.width = width;
     newFace.height = height;
-    newFace.frameIndex = frameIndex;
+    newFace.frameIndex = curFIndex;
 
     store.push_back(newFace);
 
-    curIndex = frameIndex;
+    curIndex = curFIndex;
 }
 
 vector<vector<Face> > FaceStore::cluster(){
@@ -42,12 +42,29 @@ vector<vector<Face> > FaceStore::cluster(){
 
     for(int i = 0; i < store.size(); i++) {
         bool matched = false;
+        vector<int> candidates;
         for( int j = 0; j < clustered.size();  j++ ){
+            // search for closest distance within range
             if( near(store[i], clustered[j]) ) {
-                clustered[j].push_back(store[i]);
-                matched = true;
-                break;
+                candidates.push_back(j);
             }
+        }
+
+        float min = 100000;
+        int true_index = -1;
+        // find the smallest one
+        for (int k = 0; k < candidates.size(); ++k)
+        {
+            Face f = clustered[candidates[k]].back();
+            float d = sqrt(pow((f.center.x- store[i].center.x),2) + pow((f.center.y - store[i].center.y),2));
+            if(min>d){
+                min = d;
+                true_index = candidates[k];
+            }
+        }
+        if(true_index != -1){
+            clustered[true_index].push_back(store[i]);
+            matched = true;
         }
         // End the iteration, not near to anyone
         if(!matched){
@@ -78,6 +95,11 @@ vector<vector<Face> > FaceStore::cluster(){
             }
         }
     }
+
+    cout<<clustered[0].size()<<endl;
+    cout<<clustered[1].size()<<endl;
+    cout<<clustered[2].size()<<endl;
+
     reduceNoise(30);
 
     return clustered;
@@ -106,7 +128,7 @@ void FaceStore::printOut(){
 }
 
 void FaceStore::interpolate(){
-    cout<<"cluster size:"<<clustered.size()<<endl;
+    //cout<<"cluster size:"<<clustered.size()<<endl;
     vector< vector<Face> > newClustered ;
     for(int i = 0; i < clustered.size(); i++) {
         vector<Face> t = fillIn(clustered[i]);
@@ -116,7 +138,7 @@ void FaceStore::interpolate(){
 }
 
 void FaceStore::interpolate(int clusterNumber){
-    cout<<"cluster size:"<<clustered.size()<<endl;
+    //cout<<"cluster size:"<<clustered.size()<<endl;
     vector< vector<Face> > newClustered ;
     vector<Face> t = fillIn(clustered[clusterNumber]);
     newClustered.push_back(t);
@@ -190,6 +212,7 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
                 filled.width = curW;
                 filled.height = curH;
                 filled.intered = true;
+                filled.frameIndex = preFrameIndex + index;
 
                 t.push_back(filled);
             }
@@ -206,7 +229,9 @@ vector<Face> FaceStore::fillIn(vector<Face> input){
     if(preFrameIndex != totalFrame) {
         int i = preFrameIndex;
         for(i; i < totalFrame; i++){
-            t.push_back(input[eIndex]);
+            Face dummy = input[eIndex];
+            dummy.frameIndex = i + 1;
+            t.push_back(dummy);
         }
         cout<<i - preFrameIndex<<" dummy added at the end"<<endl;
         cout<<"totalFrame:"<<totalFrame<<endl;
@@ -219,10 +244,11 @@ void FaceStore::reduceNoise(int tolerance){
     // Algorithm for reducing noise: 
     // we check if the face is detected every tolernace frames 
     // if there are more than 10 instances of the face, it would be confirmed to have a face. 
-    cout<< "clustered size "<<clustered.size()<<endl;
+    //cout<< "clustered size "<<clustered.size()<<endl;
+    printOut();
     for(int i = 0; i< clustered.size(); i++) {
-        if(clustered[i].size() > 10){
-            cout<<i<<" "<<"is a clutered"<<endl;
+        if(clustered[i].size() - 3 >  totalFrame / tolerance){
+            //cout<<i<<" "<<"is a clutered"<<endl;
             continue;
         }
         else {
@@ -237,8 +263,8 @@ void FaceStore::reduceNoise(int tolerance){
                 Face cur = clustered[i][j];
                 int curIndex = cur.frameIndex;
                 // cout<< "cur Difference:"<< curIndex-preIndex<<endl;
-                cout<<"At Reduce Noise"<<endl;
-                cur.print();
+                //cout<<"At Reduce Noise"<<endl;
+                //cur.print();
                 if (curIndex - preIndex < tolerance){
                     preIndex = curIndex;
                 }
@@ -314,7 +340,7 @@ void FaceStore::generatePoses(PhM::pose_estimator& my_est, cv::Mat& gray, int fr
             continue;
         }
 		float est=my_est.get_pose(gray, cur); 
-        cout<<"est:"<<est<<endl;
+        //cout<<"est:"<<est<<endl;
         clustered[i][frameIndex].pose = est;
     }
 }

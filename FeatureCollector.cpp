@@ -17,6 +17,7 @@ FeatureCollector::FeatureCollector(int clusterNumber){
     prev_mouth.resize(clusterNumber, -1);
     prev_face_pixel.resize(clusterNumber, -1);
     thresholds.resize(clusterNumber, -1);
+    prev_pose.resize(clusterNumber, -1);
     totalClusterNumber = clusterNumber;
     prev_index = 0;
     tempFaceFrame = cv::Mat::zeros(480, 800, CV_8UC3);
@@ -29,20 +30,33 @@ void FeatureCollector::writePoseDiff(vector< vector<Face> > store){
 	ofstream out;
     out.open("features/pose_diff.txt");
 
-    for (int i = 0; i < store.size(); ++i)
+    // if face is not all dected, ignore data
+
+    for (int j = 0; j < store[0].size(); ++j)
     {
-    	float prevPose = 0.0;
-    	for (int j = 0; j < store[i].size(); ++j)
+        // for all frames
+    	for (int i = 0; i < store.size(); ++i)
     	{
+            vector<Face> curFrameFaces;
+            for (int k = 0; k < store.size(); ++k)
+            {
+                curFrameFaces.push_back(store[k][j]);
+            }
+            if(curFrameContainsDummy(curFrameFaces)){
+                break;
+            }
+
     		Face cur = store[i][j];
-    		if(cur.isDummy()) {
-    			continue;
-    		}
 
-    		float poseDiff = cur.pose - prevPose;
-    		out<<i<<" "<<j<<" "<<poseDiff<<endl;
+            if(prev_pose[i] == -1){
+                prev_pose[i] = cur.pose;
+                
+            } else {
+                float poseDiff = cur.pose - prev_pose[i];
+                out<<i<<" "<<j<<" "<<poseDiff<<endl;
 
-    		prevPose = cur.pose;
+                prev_pose[i] = cur.pose;
+            }
     	}
     }
 
@@ -110,6 +124,7 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
 
     cv::Mat face = gray(cur.toRect());
 
+
     float cur_face_pixel = 0;
     for(int i=0; i<face.rows; i++){
         for(int j=0; j<face.cols; j++){
@@ -132,15 +147,14 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
     out.open("features/mouth_pix.txt", fstream::in | fstream::out | fstream::app);
     diff_out.open("features/mouth_diff.txt", fstream::in | fstream::out | fstream::app);
 
-    cout<<"writing new pix"<<endl;
+    //cout<<"writing new pix"<<endl;
+
 
 
     // how to show out the image 
     // taking the lower 1/3 part of the region
     cv::Mat mouthRegion = face(cv::Rect(0, cur.height - cur.height/3 - 1, cur.width, cur.height/3 + 1));
 
-    saveImage("mouth.bmp", mouthRegion);
-    saveImage("face.bmp", face);
     if(thresholds[clusterNumber] < 0) {
         // new
         thresholds[clusterNumber] = getThreshold(mouthRegion);
@@ -154,18 +168,15 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
         diff_count = abs(prev_mouth[clusterNumber] - dark_count);
     }
 
-    cout<<"prev:"<<prev_mouth[clusterNumber]<<" dark_count:"<<dark_count<<endl;
     prev_mouth[clusterNumber] = dark_count;
 
     out<<clusterNumber<<" "<<frameIndex<<" "<<dark_count<<endl;
     diff_out<<clusterNumber<<" "<<frameIndex<<" "<<diff_count<<endl;
 
-    cout<<"mouth_pix Done index:"<<frameIndex<<endl;
     out.close();
     diff_out.close();
     face_diff_out.close();
     face_out.close();
-
 
     /* Here I need to show those pixels that is blow the threshod */
 
@@ -180,7 +191,8 @@ void FeatureCollector::writeMouthPix(Face cur, const cv::Mat& gray, int clusterN
         }
     } 
 
-
+    saveImage("face.bmp", face);
+    saveImage("mouthRegion.bmp", mouthRegion);
     writeVideoMouth(mouthRegion,clusterNumber,frameIndex,writer);
 }
 
@@ -225,9 +237,8 @@ void FeatureCollector::writeVideoMouth(cv::Mat mouthRegion, int clusterNumber, i
         prev_index = frameIndex;
     }
 
-    cout<<"mouthRegion:"<<mouthRegion.size()<<endl;
+//    cout<<"mouthRegion:"<<mouthRegion.size()<<endl;
 
-    saveImage("mouthRegion_TTT.bmp", mouthRegion);
 
     cv::Mat tempFace(mouthRegion.cols,mouthRegion.rows,CV_8UC3); 
     cvtColor(mouthRegion,tempFace,CV_GRAY2BGR);
@@ -251,3 +262,11 @@ float FeatureCollector::getThreshold(cv::Mat mouthRegion){
     return sum / (4*mouthRegion.cols*mouthRegion.rows);
 }
 
+bool FeatureCollector::curFrameContainsDummy(vector<Face> cur_frame_faces){
+    for (int i = 0; i < cur_frame_faces.size(); ++i)
+    {
+        if(cur_frame_faces[i].isDummy())
+            return true;
+    }
+    return false;
+}

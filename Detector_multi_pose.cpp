@@ -2,6 +2,7 @@
 #include "GRNN.hpp"
 #include "heat.hpp"
 #include "face.hpp"
+#include "boost.hpp"
 #include "faceLocator.hpp"
 #include "distance.hpp"
 #include "FeatureCollector.hpp"
@@ -15,6 +16,8 @@
 
 using namespace okapi;
 using namespace std;
+
+#define SPEAKER_BASED 1;
 
 // scan parameters
 float  scale_step           = 1.2f;
@@ -46,6 +49,9 @@ vector< posePair > eposes;
 // for calculate distance and output result
 Distance d;
 FeatureCollector* feature;
+Boost* boostClassifier;
+int preIndex = -1;
+
 
 void writePoses(const char* filename, vector<posePair> poses){
     ofstream out;
@@ -53,7 +59,7 @@ void writePoses(const char* filename, vector<posePair> poses){
     posePair cur = poses[0];
     int curIndex = 0;
     for(int i = 0; i< poses.size(); i){
-        cout<<"i:"<<i<<endl;
+        //cout<<"i:"<<i<<endl;
         out<<cur.frameIndex;
         curIndex = cur.frameIndex;
         while(cur.frameIndex == curIndex) {
@@ -105,7 +111,8 @@ cv::Mat run_detectors(const cv::Mat& img, PhM::PhMPyramid& pyramid, PhM::pose_es
 	}
     // cluster those faces
     vector< vector<Face> > curC = store->cluster();
-
+    return cv::Mat();
+/*
     vector<cv::Rect> curLocations = locator->getLocations();
     for(unsigned k = 0; k < curLocations.size(); k++){
 		float est=my_est.get_pose(gray, curLocations[k]); 
@@ -155,6 +162,8 @@ cv::Mat run_detectors(const cv::Mat& img, PhM::PhMPyramid& pyramid, PhM::pose_es
     // cout<<"Cur FrameIndex:"<<frameIndex<<endl;
 
     return deco.mergeLayers();
+    */
+
 }
 
 int main(int argc, char* argv[])
@@ -268,6 +277,7 @@ int main(int argc, char* argv[])
 	mcdets.push_back(muldet);
     }
 
+    boostClassifier = new Boost("features/trained_boost.xml");
 
 	//load the estimator
     string file_X("/home/eeuser/bin_X_det_datas_sub2_24_ext27.7_sz28_facepix_gabor_forC_b10.txt");
@@ -284,7 +294,7 @@ int main(int argc, char* argv[])
     // We change the source to video source here
     //VideoSource* src = createDefaultCamera(640, 480);
     VideoSource* src = new FFMPEGVideoSource(video_fn);
-    std::cout<<"Src Read"<<std::endl;
+    //std::cout<<"Src Read"<<std::endl;
 
     double old_ts = -1;
     double fps = -1;
@@ -311,17 +321,18 @@ int main(int argc, char* argv[])
     FaceStore* store = new FaceStore();
     int frameIndex = 0;
 
-    cout<<"Src Collection Begins"<<endl;
+    //cout<<"Src Collection Begins"<<endl;
     while (src->getNextFrame())
     {
         collectFace(src->getImage().clone(), pyramid, store, frameIndex++);
     }
-    cout<<"Src Collection Done"<<endl;
+    //cout<<"Src Collection Done"<<endl;
 
     store->setTotalFrame(--frameIndex);
 
     store->cluster();
     store->printOut();
+
     store->interpolate();
     store->printOut();
 
@@ -338,6 +349,8 @@ int main(int argc, char* argv[])
 
     feature = new FeatureCollector(store->getClusterSize());
     feature->clear();
+    feature->writePoseDiff(store->getClustered());
+    feature->writeLocaDiff(store->getClustered());
 
     while (imgwin->getWindowState() && src->getNextFrame())
     {
@@ -348,10 +361,10 @@ int main(int argc, char* argv[])
         cvtColor(imgs[0], output, CV_RGB2BGR);
         cvWriter<<output;
     }
-    cout<<"here"<<endl;
-    feature->writePoseDiff(store->getClustered());
-    feature->writeLocaDiff(store->getClustered());
-    cout<<"pose Diff finished"<<endl;
+    //cout<<"here"<<endl;
+   // cout<<"pose Diff finished"<<endl;
+
+    boostClassifier->getErrorRate();
 
     writePoses("interpolated.dat", eposes);
     writePoses("detected.dat", dposes);
@@ -407,6 +420,7 @@ void collectFace(const cv::Mat& img, PhM::PhMPyramid& pyramid, FaceStore* store,
     else
         cv::cvtColor(img, gray, CV_RGB2GRAY);
 
+    saveImage("see.bmp", gray);
     vector<MCTDetection> mct_dets;
     vector<MCTDetection> mct_dets_clustered;
     vector<float> ests;
@@ -446,16 +460,16 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     vector<cv::Rect> curLocations = locator->getLocations(collection, frameIndex);
     */
     //vector<cv::Rect> curLocations = locator->getLocations(store->getClustered(), frameIndex);
-
     cout<<"========================"<<endl;
     cout<<"generate Frame Begins"<<endl;
     // try to distinguish interpolated and detected
     store->generatePoses(my_est, gray,frameIndex);
     vector< vector<Face> > collection = store->getClustered();
-    cout<<"collection size:"<<collection.size()<<endl;
+    //cout<<"collection size:"<<collection.size()<<endl;
 
-    for (int i = 0; i < collection.size(); ++i)
+    for (int i = 0; i < collection.size(); ++i){
         feature->writeMouthPix(collection[i][frameIndex], gray, i, frameIndex, faceWriter);
+    }
 
     /* With the method of pure voting */
     vector<Face> voted = locator->getVotedFocus(collection, frameIndex);
@@ -463,17 +477,33 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
 
     /* with ithe method of sum of the distance */
     vector<Face> faces = store->getFacesAtFrame(frameIndex);
-//    cout<<"vector size:"<<faces.size()<<endl;
-    
+    //cout<<"vector size:"<<faces.size()<<endl;
+    int mySwitch = 1;
     vector<Face> minDFaces;
+    boostClassifier->setSize(faces.size());
+
     if(faces.size() != 0){
-        int index = d.getFocus(faces);
-        if(index != -1) {
-            minDFaces.push_back(faces[index]);
-            d.printOut();
+        int index_dummy = d.getFocus(faces);
+        // this is for speaker based
+        if(mySwitch == 1){
+            int index = boostClassifier->getFocus(faces, preIndex);
+            preIndex = index;
+            if(index != -1) {
+                minDFaces.push_back(faces[index]);
+                //d.printOut();
+            }else{
+                cout<<"all dummy"<<endl;
+            }
         }else{
-            cout<<"all dummy"<<endl;
+            // this is face based
+            for (int i = 0; i < faces.size(); ++i)
+            {
+                if(boostClassifier->isSpeaker(faces[i], i)){ 
+                    minDFaces.push_back(faces[i]);
+                }
+            }
         }
+        // this is for face based
         //minDFace.print();
     }else{
         cout<<"distance part: no faces are given"<<endl;
@@ -482,6 +512,8 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
 
     vector<cv::Rect> normal = locator->getNormal(store->getClustered(), frameIndex);
     vector<cv::Rect> intered = locator->getIntered(store->getClustered(), frameIndex);
+    //cout<<normal.size()<<endl;
+    //cout<<intered.size()<<endl;
     vector<float> ests_normal;
     vector<float> ests_intered;
 
@@ -504,6 +536,7 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
         image = img;
     //cout<<"before interpolate"<<endl;
 
+    //cout<<"Image Size:"<<image.size()<<endl;
 
     /* for interpolated faces */
     ImageDeco deco(image);
@@ -549,7 +582,12 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
 
     for(int i = 0; i< voted.size(); i++) {
         //cout<<"Rect:"<<voted[i].toRect()<<endl;
-        cv::Mat face = img(voted[i].toRect());
+
+        //cout<<"here"<<endl;
+        cv::Rect face_expend_Rect = cv::Rect(voted[i].center.x  - voted[i].width - 20, voted[i].center.y - voted[i].width- 20 , voted[i].width + 40 , voted[i].height + 40);
+        //cout<<face_expend_Rect<<endl;
+        //cv::Mat face = img(voted[i].toRect());
+        cv::Mat face = img(face_expend_Rect);
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 100);
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 90);
         deco.drawText("|", voted[i].center.x, voted[i].center.y - 80);
@@ -561,12 +599,15 @@ vector<cv::Mat> generate(const cv::Mat& img, FaceStore* store, PhM::pose_estimat
     }
 
     cv::Mat output = deco.mergeLayers();
+    //cout<<output.size()<<endl;
 
     cv::Mat dst_roi = tmp(cv::Rect(0, 0, output.cols, output.rows));
     output.copyTo(dst_roi);
 
     vector<cv::Mat> images;
     images.push_back(tmp);
+
+    //cout<<tmp.size()<<endl;
 
     return images;
 
